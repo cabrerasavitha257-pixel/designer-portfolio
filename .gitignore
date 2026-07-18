@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+.env.*
+!.env.example
+output/
+outputs/
+work/
+public/assets/endless-engines-cover.mp4
+public/assets/hero-bg.mp4
+public/assets/portfolio-motion-cover.mp4
