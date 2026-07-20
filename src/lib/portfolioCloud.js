@@ -81,11 +81,22 @@ async function removeMedia(paths) {
 }
 
 function mapProject(row) {
+  const gallery = Array.isArray(row.data.gallery)
+    ? row.data.gallery.map((item) => {
+        const normalized = typeof item === 'string' ? { src: item } : item
+        return {
+          ...normalized,
+          src: normalized.path ? publicUrl(normalized.path) : normalized.src,
+        }
+      })
+    : []
+
   return {
     ...row.data,
     id: row.id,
     image: row.image_path ? publicUrl(row.image_path) : row.data.image,
     imagePath: row.image_path || '',
+    gallery,
   }
 }
 
@@ -186,36 +197,60 @@ export async function saveProjectCloud(project, sortOrder = 0) {
   const supabase = getSupabase()
   const nextProject = { ...project }
   const previousImagePath = project.imagePath || ''
+  const removedGalleryPaths = project.removedGalleryPaths || []
+  const uploadedPaths = []
   let imagePath = previousImagePath
 
-  if (project.image?.startsWith('data:')) {
-    const file = await dataUrlToFile(project.image, `project-${project.id}`)
-    imagePath = `projects/${project.id}/image-${Date.now()}.${fileExtension(file, 'webp')}`
-    await uploadFile(imagePath, file)
-    nextProject.image = publicUrl(imagePath)
-  }
+  try {
+    if (project.image?.startsWith('data:')) {
+      const file = await dataUrlToFile(project.image, `project-${project.id}`)
+      imagePath = `projects/${project.id}/image-${Date.now()}.${fileExtension(file, 'webp')}`
+      await uploadFile(imagePath, file)
+      uploadedPaths.push(imagePath)
+      nextProject.image = publicUrl(imagePath)
+    }
 
-  delete nextProject.imagePath
-  const { error } = await supabase.from('projects').upsert({
-    id: project.id,
-    data: nextProject,
-    image_path: imagePath || null,
-    sort_order: sortOrder,
-  })
+    nextProject.gallery = []
+    for (let index = 0; index < (project.gallery || []).length; index += 1) {
+      const item = project.gallery[index]
+      if (!item.src?.startsWith('data:')) {
+        nextProject.gallery.push(item)
+        continue
+      }
 
-  if (error) {
-    if (imagePath !== previousImagePath) await removeMedia([imagePath])
+      const file = await dataUrlToFile(item.src, `project-${project.id}-${index + 1}`)
+      const path = `projects/${project.id}/gallery-${Date.now()}-${index + 1}.${fileExtension(file, 'webp')}`
+      await uploadFile(path, file)
+      uploadedPaths.push(path)
+      nextProject.gallery.push({ ...item, src: publicUrl(path), path })
+    }
+
+    delete nextProject.imagePath
+    delete nextProject.removedGalleryPaths
+    const { error } = await supabase.from('projects').upsert({
+      id: project.id,
+      data: nextProject,
+      image_path: imagePath || null,
+      sort_order: sortOrder,
+    })
+
+    if (error) throw error
+  } catch (error) {
+    await removeMedia(uploadedPaths)
     throw error
   }
 
-  if (previousImagePath && previousImagePath !== imagePath) await removeMedia([previousImagePath])
+  await removeMedia([
+    previousImagePath && previousImagePath !== imagePath ? previousImagePath : '',
+    ...removedGalleryPaths,
+  ])
   return { ...nextProject, imagePath }
 }
 
 export async function deleteProjectCloud(project) {
   const { error } = await getSupabase().from('projects').delete().eq('id', project.id)
   if (error) throw error
-  await removeMedia([project.imagePath])
+  await removeMedia([project.imagePath, ...(project.gallery || []).map((item) => item.path)])
 }
 
 export async function saveVideoCloud(video, file, sortOrder = 0, onProgress) {

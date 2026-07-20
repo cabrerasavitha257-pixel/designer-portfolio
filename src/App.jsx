@@ -443,8 +443,108 @@ function About({ content, projectCount }) {
   )
 }
 
+function ProjectGallery({ project, onClose }) {
+  const [activeIndex, setActiveIndex] = useState(0)
+  const images = []
+  const seenSources = new Set()
+
+  ;[
+    { src: project.image, alt: project.alt || project.title },
+    ...(Array.isArray(project.gallery) ? project.gallery : []),
+  ].forEach((item) => {
+    const normalized = typeof item === 'string' ? { src: item, alt: project.title } : item
+    if (!normalized?.src || seenSources.has(normalized.src)) return
+    seenSources.add(normalized.src)
+    images.push(normalized)
+  })
+
+  useEffect(() => {
+    setActiveIndex(0)
+  }, [project.id])
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') onClose()
+      if (event.key === 'ArrowLeft') {
+        setActiveIndex((current) => (current - 1 + images.length) % images.length)
+      }
+      if (event.key === 'ArrowRight') {
+        setActiveIndex((current) => (current + 1) % images.length)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = previousOverflow
+    }
+  }, [images.length, onClose])
+
+  const activeImage = images[activeIndex]
+  const showPrevious = () => setActiveIndex((current) => (current - 1 + images.length) % images.length)
+  const showNext = () => setActiveIndex((current) => (current + 1) % images.length)
+
+  return (
+    <div
+      className="project-gallery-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose()
+      }}
+    >
+      <section className="project-gallery-panel" role="dialog" aria-modal="true" aria-label={`${project.title} 项目图库`}>
+        <header className="project-gallery-header">
+          <div>
+            <span>{project.type}</span>
+            <strong>{project.title}</strong>
+          </div>
+          <div className="project-gallery-tools">
+            <span>{String(activeIndex + 1).padStart(2, '0')} / {String(images.length).padStart(2, '0')}</span>
+            <a href={activeImage?.src} target="_blank" rel="noreferrer">查看原图</a>
+            <button type="button" onClick={onClose} aria-label="关闭项目图库" title="关闭">×</button>
+          </div>
+        </header>
+
+        <div className="project-gallery-stage">
+          {images.length > 1 && (
+            <button className="project-gallery-arrow is-previous" type="button" onClick={showPrevious} aria-label="上一张" title="上一张">
+              ←
+            </button>
+          )}
+          {activeImage && <img src={activeImage.src} alt={activeImage.alt || `${project.title} ${activeIndex + 1}`} />}
+          {images.length > 1 && (
+            <button className="project-gallery-arrow is-next" type="button" onClick={showNext} aria-label="下一张" title="下一张">
+              →
+            </button>
+          )}
+        </div>
+
+        {images.length > 1 && (
+          <div className="project-gallery-thumbnails" aria-label="项目图片列表">
+            {images.map((image, index) => (
+              <button
+                className={index === activeIndex ? 'is-active' : ''}
+                type="button"
+                key={`${image.src}-${index}`}
+                onClick={() => setActiveIndex(index)}
+                aria-label={`查看第 ${index + 1} 张`}
+              >
+                <img src={image.src} alt="" />
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}
+
 function Projects({ content, projects, isAdmin, onAdd, onEdit, onDelete, onEditContent, storageError }) {
   const archive = content.archive
+  const [activeProject, setActiveProject] = useState(null)
 
   return (
     <section className="section projects-section" id="projects">
@@ -489,10 +589,20 @@ function Projects({ content, projects, isAdmin, onAdd, onEdit, onDelete, onEditC
             {projects.map((project, index) => (
               <article className="project-card" key={project.id}>
                 <div className="project-visual">
-                  <img src={project.image} alt={project.alt || project.title} />
-                  <span className="project-code">
-                    {archive.projectCode} / {String(index + 1).padStart(2, '0')}
-                  </span>
+                  <button
+                    className="project-open-button"
+                    type="button"
+                    onClick={() => setActiveProject(project)}
+                    aria-label={`打开 ${project.title} 项目图库`}
+                  >
+                    <img src={project.image} alt={project.alt || project.title} />
+                    <span className="project-code">
+                      {archive.projectCode} / {String(index + 1).padStart(2, '0')}
+                    </span>
+                    <span className="project-image-count">
+                      VIEW SERIES · {String((project.gallery?.length || 0) + 1).padStart(2, '0')}
+                    </span>
+                  </button>
                   {isAdmin && (
                     <div className="project-admin-actions">
                       <button type="button" onClick={() => onEdit(project)}>
@@ -528,6 +638,7 @@ function Projects({ content, projects, isAdmin, onAdd, onEdit, onDelete, onEditC
           </div>
         )}
       </div>
+      {activeProject && <ProjectGallery project={activeProject} onClose={() => setActiveProject(null)} />}
     </section>
   )
 }
@@ -919,6 +1030,11 @@ function ProjectEditor({ project, onClose, onSave }) {
     description: project?.description || '',
     image: project?.image || '',
     alt: project?.alt || '',
+    gallery: (project?.gallery || []).map((item) => {
+      const normalized = typeof item === 'string' ? { src: item } : item
+      return { ...normalized, id: normalized.id || window.crypto.randomUUID() }
+    }),
+    removedGalleryPaths: [],
   }))
   const [error, setError] = useState('')
   const [processingImage, setProcessingImage] = useState(false)
@@ -943,6 +1059,44 @@ function ProjectEditor({ project, onClose, onSave }) {
     } finally {
       setProcessingImage(false)
     }
+  }
+
+  async function handleGalleryFiles(event) {
+    const files = Array.from(event.target.files || [])
+    if (!files.length) return
+
+    setProcessingImage(true)
+    setError('')
+    try {
+      const additions = []
+      for (const file of files) {
+        additions.push({
+          id: window.crypto.randomUUID(),
+          src: await compressImage(file, 2000, 0.88),
+          path: '',
+          alt: form.title || file.name,
+        })
+      }
+      setForm((current) => ({ ...current, gallery: [...current.gallery, ...additions] }))
+      event.target.value = ''
+    } catch (imageError) {
+      setError(imageError.message)
+    } finally {
+      setProcessingImage(false)
+    }
+  }
+
+  function removeGalleryImage(itemId) {
+    setForm((current) => {
+      const target = current.gallery.find((item) => item.id === itemId)
+      return {
+        ...current,
+        gallery: current.gallery.filter((item) => item.id !== itemId),
+        removedGalleryPaths: target?.path
+          ? [...current.removedGalleryPaths, target.path]
+          : current.removedGalleryPaths,
+      }
+    })
   }
 
   async function handleSubmit(event) {
@@ -1004,14 +1158,37 @@ function ProjectEditor({ project, onClose, onSave }) {
               />
             </label>
             <label className="editor-field-wide file-field">
-              上传图片
+              上传主页封面
               <input type="file" accept="image/*" onChange={handleFile} />
+            </label>
+            <label className="editor-field-wide file-field">
+              批量添加项目内页图片
+              <input type="file" accept="image/*" multiple onChange={handleGalleryFiles} />
             </label>
           </div>
 
           {form.image && (
             <div className="editor-preview">
               <img src={form.image} alt="项目图片预览" />
+            </div>
+          )}
+          {form.gallery.length > 0 && (
+            <div className="editor-gallery">
+              <div className="editor-gallery-heading">
+                <strong>项目内页</strong>
+                <span>{form.gallery.length} 张</span>
+              </div>
+              <div className="editor-gallery-grid">
+                {form.gallery.map((item, index) => (
+                  <div className="editor-gallery-item" key={item.id}>
+                    <img src={item.src} alt={`${form.title || '项目'}内页 ${index + 1}`} />
+                    <span>{String(index + 1).padStart(2, '0')}</span>
+                    <button type="button" onClick={() => removeGalleryImage(item.id)} aria-label={`删除第 ${index + 1} 张`} title="删除">
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
           {error && <span className="form-error">{error}</span>}

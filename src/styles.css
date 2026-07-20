@@ -493,8 +493,8 @@ video {
 
 .project-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 22px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
 }
 
 .project-card {
@@ -520,9 +520,21 @@ video {
 .project-visual {
   position: relative;
   overflow: hidden;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 16 / 10;
   border-radius: 6px;
   background: rgba(74, 105, 118, 0.18);
+}
+
+.project-open-button {
+  width: 100%;
+  height: 100%;
+  display: block;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
 }
 
 .project-card img {
@@ -549,6 +561,19 @@ video {
   backdrop-filter: blur(12px);
 }
 
+.project-image-count {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
+  background: rgba(5, 8, 8, 0.62);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 9px;
+  backdrop-filter: blur(12px);
+}
+
 .project-info {
   display: flex;
   align-items: end;
@@ -563,6 +588,178 @@ video {
   margin: 0;
   color: var(--archive-muted);
   font-size: 11px;
+}
+
+.project-gallery-backdrop {
+  position: fixed;
+  z-index: 500;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(2, 3, 3, 0.92);
+  backdrop-filter: blur(20px);
+}
+
+.project-gallery-panel {
+  width: min(1600px, 100%);
+  height: calc(100dvh - 32px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: #090b0b;
+  box-shadow: 0 36px 100px rgba(0, 0, 0, 0.58);
+}
+
+.project-gallery-header {
+  min-height: 74px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 12px 16px 12px 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.project-gallery-header > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.project-gallery-header span {
+  color: #7f8b88;
+  font-size: 10px;
+}
+
+.project-gallery-header strong {
+  overflow: hidden;
+  color: #f0ece5;
+  font-size: 20px;
+  font-weight: 560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.project-gallery-tools {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.project-gallery-tools > span,
+.project-gallery-tools a,
+.project-gallery-tools button,
+.project-gallery-arrow {
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  background: rgba(255, 255, 255, 0.04);
+  color: #b7c0bd;
+}
+
+.project-gallery-tools > span,
+.project-gallery-tools a {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 13px;
+  text-decoration: none;
+}
+
+.project-gallery-tools a {
+  color: #d8dfdc;
+  font-size: 11px;
+}
+
+.project-gallery-tools a:hover {
+  border-color: rgba(120, 193, 181, 0.55);
+  color: #eafff8;
+}
+
+.project-gallery-tools button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.project-gallery-stage {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #050606;
+}
+
+.project-gallery-stage > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.project-gallery-arrow {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border-radius: 50%;
+  background: rgba(5, 8, 8, 0.72);
+  font-size: 19px;
+  cursor: pointer;
+  transform: translateY(-50%);
+  backdrop-filter: blur(12px);
+}
+
+.project-gallery-arrow:hover {
+  border-color: rgba(120, 193, 181, 0.68);
+  background: rgba(18, 33, 30, 0.9);
+  color: #fff;
+}
+
+.project-gallery-arrow.is-previous {
+  left: 18px;
+}
+
+.project-gallery-arrow.is-next {
+  right: 18px;
+}
+
+.project-gallery-thumbnails {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 12px 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  scrollbar-color: rgba(120, 193, 181, 0.5) transparent;
+}
+
+.project-gallery-thumbnails button {
+  flex: 0 0 72px;
+  width: 72px;
+  height: 54px;
+  overflow: hidden;
+  padding: 2px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+}
+
+.project-gallery-thumbnails button.is-active {
+  border-color: #78c1b5;
+}
+
+.project-gallery-thumbnails img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .project-info h3 {
@@ -1756,6 +1953,76 @@ video {
   object-fit: cover;
 }
 
+.editor-gallery {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.editor-gallery-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.editor-gallery-heading strong {
+  color: #eae6df;
+  font-size: 14px;
+  font-weight: 560;
+}
+
+.editor-gallery-heading span {
+  color: #7f8986;
+  font-size: 11px;
+}
+
+.editor-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.editor-gallery-item {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  background: #080a0a;
+}
+
+.editor-gallery-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.editor-gallery-item > span {
+  position: absolute;
+  left: 7px;
+  bottom: 7px;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 9px;
+  text-shadow: 0 1px 6px #000;
+}
+
+.editor-gallery-item button {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 50%;
+  background: rgba(4, 6, 6, 0.76);
+  color: #fff;
+  font-size: 17px;
+  cursor: pointer;
+}
+
 .video-editor-preview {
   overflow: hidden;
   aspect-ratio: 16 / 9;
@@ -2264,6 +2531,10 @@ video {
     gap: 16px;
   }
 
+  .project-visual {
+    aspect-ratio: 4 / 3;
+  }
+
   .project-card {
     padding-bottom: 18px;
   }
@@ -2277,6 +2548,72 @@ video {
   .project-info h3 {
     font-size: 21px;
     overflow-wrap: anywhere;
+  }
+
+  .project-gallery-backdrop {
+    padding: 0;
+  }
+
+  .project-gallery-panel {
+    width: 100%;
+    height: 100svh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .project-gallery-header {
+    min-height: 68px;
+    gap: 10px;
+    padding: 10px 10px 10px 14px;
+  }
+
+  .project-gallery-header strong {
+    font-size: 16px;
+  }
+
+  .project-gallery-tools {
+    gap: 6px;
+  }
+
+  .project-gallery-tools > span,
+  .project-gallery-tools a {
+    min-height: 36px;
+    padding: 0 9px;
+  }
+
+  .project-gallery-tools a {
+    display: none;
+  }
+
+  .project-gallery-tools button {
+    width: 36px;
+    height: 36px;
+  }
+
+  .project-gallery-arrow {
+    top: auto;
+    bottom: 14px;
+    width: 42px;
+    height: 42px;
+    transform: none;
+  }
+
+  .project-gallery-arrow.is-previous {
+    left: 14px;
+  }
+
+  .project-gallery-arrow.is-next {
+    right: 14px;
+  }
+
+  .project-gallery-thumbnails {
+    padding: 10px;
+  }
+
+  .project-gallery-thumbnails button {
+    flex-basis: 62px;
+    width: 62px;
+    height: 48px;
   }
 
   .archive-empty {
@@ -2576,6 +2913,10 @@ video {
 
   .editor-preview {
     aspect-ratio: 4 / 3;
+  }
+
+  .editor-gallery-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .settings-tabs {
