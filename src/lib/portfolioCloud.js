@@ -172,24 +172,47 @@ export async function signOutAdmin() {
 export async function saveContentCloud(content) {
   const supabase = getSupabase()
   const nextContent = JSON.parse(JSON.stringify(content))
-  let nextAvatarPath = nextContent.about?.avatarPath || ''
-  const previousAvatarPath = nextAvatarPath
+  const uploadedPaths = []
+  const stalePaths = []
 
-  if (nextContent.about?.avatar?.startsWith('data:')) {
-    const file = await dataUrlToFile(nextContent.about.avatar, 'avatar')
-    nextAvatarPath = `site/avatar-${Date.now()}.${fileExtension(file, 'webp')}`
-    await uploadFile(nextAvatarPath, file)
-    nextContent.about.avatar = publicUrl(nextAvatarPath)
-    nextContent.about.avatarPath = nextAvatarPath
+  async function uploadContentImage(container, key, pathKey, prefix) {
+    if (!container?.[key]?.startsWith('data:')) return
+    const previousPath = container[pathKey] || ''
+    const file = await dataUrlToFile(container[key], prefix)
+    const nextPath = `site/${prefix}-${Date.now()}.${fileExtension(file, 'webp')}`
+    await uploadFile(nextPath, file)
+    uploadedPaths.push(nextPath)
+    container[key] = publicUrl(nextPath)
+    container[pathKey] = nextPath
+    if (previousPath && previousPath !== nextPath) stalePaths.push(previousPath)
   }
 
-  const { error } = await supabase.from('site_content').upsert({ id: 'main', content: nextContent })
-  if (error) {
-    if (nextAvatarPath !== previousAvatarPath) await removeMedia([nextAvatarPath])
+  try {
+    await uploadContentImage(nextContent.about, 'avatar', 'avatarPath', 'avatar')
+    await uploadContentImage(nextContent.site, 'icon', 'iconPath', 'site-icon')
+    await uploadContentImage(nextContent.site, 'adminIcon', 'adminIconPath', 'admin-icon')
+    for (const [folderId, folder] of Object.entries(nextContent.folders || {})) {
+      await uploadContentImage(folder, 'cover', 'coverPath', `${folderId}-folder`)
+    }
+
+    for (const font of nextContent.theme?.customFonts || []) {
+      if (!font.src?.startsWith('data:')) continue
+      const file = await dataUrlToFile(font.src, font.id || 'custom-font')
+      const nextPath = `site/fonts/${font.id || Date.now()}.${fileExtension(file, 'woff2')}`
+      await uploadFile(nextPath, file)
+      uploadedPaths.push(nextPath)
+      font.src = publicUrl(nextPath)
+      font.path = nextPath
+    }
+
+    const { error } = await supabase.from('site_content').upsert({ id: 'main', content: nextContent })
+    if (error) throw error
+  } catch (error) {
+    await removeMedia(uploadedPaths)
     throw error
   }
 
-  if (previousAvatarPath && previousAvatarPath !== nextAvatarPath) await removeMedia([previousAvatarPath])
+  await removeMedia(stalePaths)
   return nextContent
 }
 
